@@ -1,15 +1,18 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/getlantern/systray"
 )
 
 const (
-	workTime = 15
-	restTime = 3
+	// workTime = 15
+	workTime = 25 * time.Second
+	restTime = 5 * time.Second
 )
 
 func main() {
@@ -64,19 +67,20 @@ func onReady() {
 	systray.SetIcon(getIcon("file.ico"))
 
 	systray.SetTitle("Pomodoro")
-	systray.SetTooltip("Pomodoro")
-
 	systray.AddSeparator()
 
 	startMenu := systray.AddMenuItem("Начать", "")
 	pauseMenu := systray.AddMenuItem("Остановить", "")
 	stopMenu := systray.AddMenuItem("Сбросить", "")
+	exitMenu := systray.AddMenuItem("Выход", "")
 
+	seconds := make(chan int)
+	seconds <- 0
 	go func() {
 		for {
 			select {
 			case <-startMenu.ClickedCh:
-				startTimer()
+				startTimer(seconds)
 				return
 			case <-pauseMenu.ClickedCh:
 				pauseTimer()
@@ -84,21 +88,47 @@ func onReady() {
 			case <-stopMenu.ClickedCh:
 				stopTimer()
 				return
+			case <-exitMenu.ClickedCh:
+				systray.Quit()
+				return
 			}
+		}
+	}()
+
+	go func() {
+		for {
+			// systray.SetTooltip(time.Now().String())
+			systray.SetTooltip(getTime(seconds))
+			time.Sleep(1 * time.Second)
 		}
 	}()
 }
 
 func stopTimer() {
+	// startTime := time.Now()
+
+}
+
+func getTime(seconds chan int) string {
+	log.Println("getTime")
+	return fmt.Sprintf("%d", <-seconds)
 }
 
 func pauseTimer() {
 }
 
-func startTimer() {
-
+func startTimer(seconds chan int) {
+	ticker := time.NewTicker(1 * time.Second)
+	go func() {
+		select {
+		case t := <-ticker.C:
+			seconds <- +1
+			// log.Println(<-seconds)
+			log.Println(t)
+		}
+	}()
 }
 
 func onExit() {
-
+	log.Println("exited")
 }
